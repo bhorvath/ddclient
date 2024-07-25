@@ -10,7 +10,11 @@ import (
 
 func main() {
 	ih := ipaddress.NewIpifyIPAddressHandler()
-	dh := dns.NewPorkbunDNSHandler()
+	dh, err := dns.NewPorkbunDNSHandler()
+	if err != nil {
+		fmt.Println("Error setting up DNS handler:", err)
+		os.Exit(1)
+	}
 
 	ip, err := ih.GetCurrent()
 	if err != nil {

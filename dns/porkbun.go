@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/netip"
+	"os"
 )
 
 const (
@@ -15,14 +16,14 @@ const (
 	retrieveEndpoint = "retrieveByNameType"
 	editEndpoint     = "editByNameType"
 	createEndpoint   = "create"
-	domain           = ""
-	recordType       = ""
-	recordName       = ""
-	APIKey           = ""
-	secretAPIKey     = ""
 )
 
 type PorkbunDNSHandler struct {
+	domain     string
+	recordType string
+	recordName string
+	apiKey     string
+	secretKey  string
 }
 
 type retrieveRequest struct {
@@ -60,13 +61,53 @@ type createRequest struct {
 	TTL          string `json:"ttl"`
 }
 
-func NewPorkbunDNSHandler() *PorkbunDNSHandler {
-	return &PorkbunDNSHandler{}
+func NewPorkbunDNSHandler() (*PorkbunDNSHandler, error) {
+	domain, err := getEnvVar("DOMAIN")
+	if err != nil {
+		return nil, err
+	}
+
+	recordType, err := getEnvVar("RECORD_TYPE")
+	if err != nil {
+		return nil, err
+	}
+
+	recordName, err := getEnvVar("RECORD_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	apiKey, err := getEnvVar("PORKBUN_API_KEY")
+	if err != nil {
+		return nil, err
+	}
+
+	secretKey, err := getEnvVar("PORKBUN_SECRET_KEY")
+	if err != nil {
+		return nil, err
+	}
+
+	return &PorkbunDNSHandler{
+		domain:     domain,
+		recordType: recordType,
+		recordName: recordName,
+		apiKey:     apiKey,
+		secretKey:  secretKey,
+	}, nil
+}
+
+func getEnvVar(envVar string) (string, error) {
+	value := os.Getenv(envVar)
+	if value == "" {
+		return "", errors.New("environment variable " + envVar + " is missing")
+	}
+
+	return value, nil
 }
 
 func (h *PorkbunDNSHandler) Update(IP netip.Addr) error {
 	fmt.Print("Checking whether record exists... ")
-	r, err := retrieveRecords()
+	r, err := h.retrieveRecords()
 	if err != nil {
 		return err
 	}
@@ -86,7 +127,7 @@ func (h *PorkbunDNSHandler) Update(IP netip.Addr) error {
 		}
 		if !compareIPs(curIP, IP) {
 			fmt.Print("IP has changed. Updating... ")
-			err = editRecord(IP)
+			err = h.editRecord(IP)
 			if err != nil {
 				return err
 			}
@@ -97,7 +138,7 @@ func (h *PorkbunDNSHandler) Update(IP netip.Addr) error {
 	} else {
 		// Create new record
 		fmt.Print("Creating new record... ")
-		err = createRecord(IP)
+		err = h.createRecord(IP)
 		if err != nil {
 			return err
 		}
@@ -107,17 +148,17 @@ func (h *PorkbunDNSHandler) Update(IP netip.Addr) error {
 	return nil
 }
 
-func retrieveRecords() ([]record, error) {
+func (h *PorkbunDNSHandler) retrieveRecords() ([]record, error) {
 	body, err := json.Marshal(retrieveRequest{
-		APIKey:       APIKey,
-		SecretAPIKey: secretAPIKey,
+		APIKey:       h.apiKey,
+		SecretAPIKey: h.secretKey,
 	})
 	if err != nil {
 		return []record{}, err
 	}
 	bodyReader := bytes.NewReader(body)
 
-	requestURL := baseURL + "/" + retrieveEndpoint + "/" + domain + "/" + recordType + "/" + recordName
+	requestURL := baseURL + "/" + retrieveEndpoint + "/" + h.domain + "/" + h.recordType + "/" + h.recordName
 	res, err := http.Post(requestURL, "application/json", bodyReader)
 	if err != nil {
 		return []record{}, err
@@ -138,10 +179,10 @@ func retrieveRecords() ([]record, error) {
 	return rr.Records, nil
 }
 
-func editRecord(ip netip.Addr) error {
+func (h *PorkbunDNSHandler) editRecord(ip netip.Addr) error {
 	body, err := json.Marshal(editRequest{
-		APIKey:       APIKey,
-		SecretAPIKey: secretAPIKey,
+		APIKey:       h.apiKey,
+		SecretAPIKey: h.secretKey,
 		Content:      ip.String(),
 	})
 	if err != nil {
@@ -149,7 +190,7 @@ func editRecord(ip netip.Addr) error {
 	}
 	bodyReader := bytes.NewReader(body)
 
-	requestURL := baseURL + "/" + editEndpoint + "/" + domain + "/" + recordType + "/" + recordName
+	requestURL := baseURL + "/" + editEndpoint + "/" + h.domain + "/" + h.recordType + "/" + h.recordName
 	res, err := http.Post(requestURL, "application/json", bodyReader)
 	if err != nil {
 		return err
@@ -164,12 +205,12 @@ func editRecord(ip netip.Addr) error {
 	return nil
 }
 
-func createRecord(ip netip.Addr) error {
+func (h *PorkbunDNSHandler) createRecord(ip netip.Addr) error {
 	body, err := json.Marshal(createRequest{
-		APIKey:       APIKey,
-		SecretAPIKey: secretAPIKey,
-		Name:         recordName,
-		Type:         recordType,
+		APIKey:       h.apiKey,
+		SecretAPIKey: h.secretKey,
+		Name:         h.recordName,
+		Type:         h.recordType,
 		Content:      ip.String(),
 	})
 	if err != nil {
@@ -177,7 +218,7 @@ func createRecord(ip netip.Addr) error {
 	}
 	bodyReader := bytes.NewReader(body)
 
-	requestURL := baseURL + "/" + createEndpoint + "/" + domain
+	requestURL := baseURL + "/" + createEndpoint + "/" + h.domain
 	res, err := http.Post(requestURL, "application/json", bodyReader)
 	if err != nil {
 		return err
