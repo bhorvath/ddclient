@@ -12,13 +12,13 @@ import (
 )
 
 const (
-	baseURL          = "https://api.porkbun.com/api/json/v3/dns"
-	retrieveEndpoint = "retrieveByNameType"
-	editEndpoint     = "editByNameType"
-	createEndpoint   = "create"
+	retrieveEndpoint = "/api/json/v3/dns/retrieveByNameType"
+	editEndpoint     = "/api/json/v3/dns/editByNameType"
+	createEndpoint   = "/api/json/v3/dns/create"
 )
 
 type PorkbunDNSHandler struct {
+	baseURL    string
 	domain     string
 	recordType string
 	recordName string
@@ -61,7 +61,7 @@ type createRequest struct {
 	TTL          string `json:"ttl"`
 }
 
-func NewPorkbunDNSHandler() (*PorkbunDNSHandler, error) {
+func NewPorkbunDNSHandler(baseURL string) (*PorkbunDNSHandler, error) {
 	domain, err := getEnvVar("DOMAIN")
 	if err != nil {
 		return nil, err
@@ -88,6 +88,7 @@ func NewPorkbunDNSHandler() (*PorkbunDNSHandler, error) {
 	}
 
 	return &PorkbunDNSHandler{
+		baseURL:    baseURL,
 		domain:     domain,
 		recordType: recordType,
 		recordName: recordName,
@@ -114,7 +115,6 @@ func (h *PorkbunDNSHandler) Update(IP netip.Addr) error {
 
 	c := len(r)
 	fmt.Printf("Found %v existing record(s).\n", c)
-
 	if c > 1 {
 		return errors.New("more than one record to update found")
 	} else if c == 1 {
@@ -158,7 +158,7 @@ func (h *PorkbunDNSHandler) retrieveRecords() ([]record, error) {
 	}
 	bodyReader := bytes.NewReader(body)
 
-	requestURL := baseURL + "/" + retrieveEndpoint + "/" + h.domain + "/" + h.recordType + "/" + h.recordName
+	requestURL := h.baseURL + retrieveEndpoint + "/" + h.domain + "/" + h.recordType + "/" + h.recordName
 	res, err := http.Post(requestURL, "application/json", bodyReader)
 	if err != nil {
 		return []record{}, err
@@ -190,7 +190,7 @@ func (h *PorkbunDNSHandler) editRecord(ip netip.Addr) error {
 	}
 	bodyReader := bytes.NewReader(body)
 
-	requestURL := baseURL + "/" + editEndpoint + "/" + h.domain + "/" + h.recordType + "/" + h.recordName
+	requestURL := h.baseURL + editEndpoint + "/" + h.domain + "/" + h.recordType + "/" + h.recordName
 	res, err := http.Post(requestURL, "application/json", bodyReader)
 	if err != nil {
 		return err
@@ -218,7 +218,7 @@ func (h *PorkbunDNSHandler) createRecord(ip netip.Addr) error {
 	}
 	bodyReader := bytes.NewReader(body)
 
-	requestURL := baseURL + "/" + createEndpoint + "/" + h.domain
+	requestURL := h.baseURL + createEndpoint + "/" + h.domain
 	res, err := http.Post(requestURL, "application/json", bodyReader)
 	if err != nil {
 		return err
