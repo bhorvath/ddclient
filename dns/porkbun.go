@@ -61,6 +61,13 @@ type createRequest struct {
 	TTL          string `json:"ttl"`
 }
 
+// NewPorkbunDNSHandler allows a DNS record in Porkbun to be read, updated or created. The following
+// environment variables must be provided:
+// - DOMAIN: The domain of the record; eg. 'test.com'
+// - RECORD_TYPE: The type of the record to interact with; eg. 'A'
+// - RECORD_NAME: The name of the record to interact with; eg. 'subdomain'
+// - PORKBUN_API_KEY: The API key obtained from Porkbun; eg. 'pk1_xxx'
+// - PORKBUN_SECRET_KEY: The secret key for the corresponding API key; eg. 'sk1_xxx'
 func NewPorkbunDNSHandler(baseURL string) (*PorkbunDNSHandler, error) {
 	domain, err := getEnvVar("DOMAIN")
 	if err != nil {
@@ -106,6 +113,9 @@ func getEnvVar(envVar string) (string, error) {
 	return value, nil
 }
 
+// Update either creates or updates a record based on the current IP address. If the current address
+// is the same as the record then no change is made. Update does not currently support making changes
+// to multiple records, so an error is thrown if multiple records exist.
 func (h *PorkbunDNSHandler) Update(IP netip.Addr) error {
 	fmt.Print("Checking whether record exists... ")
 	r, err := h.retrieveRecords()

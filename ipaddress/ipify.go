@@ -14,6 +14,7 @@ func NewIpifyIPAddressHandler(baseURL string) *IpifyIPAddressHandler {
 	return &IpifyIPAddressHandler{baseURL: baseURL}
 }
 
+// GetCurrent returns the current public IP address of the client.
 func (h *IpifyIPAddressHandler) GetCurrent() (netip.Addr, error) {
 	res, err := http.Get(h.baseURL)
 	if err != nil {
