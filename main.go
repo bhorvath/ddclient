@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	ih := ipaddress.NewIpifyIPAddressHandler()
+	ih := ipaddress.NewIpifyIPAddressHandler("https://api.ipify.org")
 	dh, err := dns.NewPorkbunDNSHandler("https://api.porkbun.com")
 	if err != nil {
 		fmt.Println("Error setting up DNS handler:", err)

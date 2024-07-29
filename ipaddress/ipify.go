@@ -10,8 +10,8 @@ type IpifyIPAddressHandler struct {
 	baseURL string
 }
 
-func NewIpifyIPAddressHandler() *IpifyIPAddressHandler {
-	return &IpifyIPAddressHandler{baseURL: "https://api.ipify.org"}
+func NewIpifyIPAddressHandler(baseURL string) *IpifyIPAddressHandler {
+	return &IpifyIPAddressHandler{baseURL: baseURL}
 }
 
 func (h *IpifyIPAddressHandler) GetCurrent() (netip.Addr, error) {
