@@ -8,7 +8,8 @@ import (
 	"io"
 	"net/http"
 	"net/netip"
-	"os"
+
+	"github.com/bhorvath/ddclient/config"
 )
 
 const (
@@ -18,12 +19,8 @@ const (
 )
 
 type PorkbunDNSHandler struct {
-	baseURL    string
-	domain     string
-	recordType string
-	recordName string
-	apiKey     string
-	secretKey  string
+	baseURL string
+	config  *config.Args
 }
 
 type retrieveRequest struct {
@@ -61,56 +58,12 @@ type createRequest struct {
 	TTL          string `json:"ttl"`
 }
 
-// NewPorkbunDNSHandler allows a DNS record in Porkbun to be read, updated or created. The following
-// environment variables must be provided:
-// - DOMAIN: The domain of the record; eg. 'test.com'
-// - RECORD_TYPE: The type of the record to interact with; eg. 'A'
-// - RECORD_NAME: The name of the record to interact with; eg. 'subdomain'
-// - PORKBUN_API_KEY: The API key obtained from Porkbun; eg. 'pk1_xxx'
-// - PORKBUN_SECRET_KEY: The secret key for the corresponding API key; eg. 'sk1_xxx'
-func NewPorkbunDNSHandler(baseURL string) (*PorkbunDNSHandler, error) {
-	domain, err := getEnvVar("DOMAIN")
-	if err != nil {
-		return nil, err
-	}
-
-	recordType, err := getEnvVar("RECORD_TYPE")
-	if err != nil {
-		return nil, err
-	}
-
-	recordName, err := getEnvVar("RECORD_NAME")
-	if err != nil {
-		return nil, err
-	}
-
-	apiKey, err := getEnvVar("PORKBUN_API_KEY")
-	if err != nil {
-		return nil, err
-	}
-
-	secretKey, err := getEnvVar("PORKBUN_SECRET_KEY")
-	if err != nil {
-		return nil, err
-	}
-
+// NewPorkbunDNSHandler allows a DNS record in Porkbun to be read, updated or created.
+func NewPorkbunDNSHandler(baseURL string, config *config.Args) (*PorkbunDNSHandler, error) {
 	return &PorkbunDNSHandler{
-		baseURL:    baseURL,
-		domain:     domain,
-		recordType: recordType,
-		recordName: recordName,
-		apiKey:     apiKey,
-		secretKey:  secretKey,
+		baseURL: baseURL,
+		config:  config,
 	}, nil
-}
-
-func getEnvVar(envVar string) (string, error) {
-	value := os.Getenv(envVar)
-	if value == "" {
-		return "", errors.New("environment variable " + envVar + " is missing")
-	}
-
-	return value, nil
 }
 
 // Update either creates or updates a record based on the current IP address. If the current address
@@ -160,15 +113,15 @@ func (h *PorkbunDNSHandler) Update(IP netip.Addr) error {
 
 func (h *PorkbunDNSHandler) retrieveRecords() ([]record, error) {
 	body, err := json.Marshal(retrieveRequest{
-		APIKey:       h.apiKey,
-		SecretAPIKey: h.secretKey,
+		APIKey:       h.config.APIKey,
+		SecretAPIKey: h.config.SecretKey,
 	})
 	if err != nil {
 		return []record{}, err
 	}
 	bodyReader := bytes.NewReader(body)
 
-	requestURL := h.baseURL + retrieveEndpoint + "/" + h.domain + "/" + h.recordType + "/" + h.recordName
+	requestURL := h.baseURL + retrieveEndpoint + "/" + h.config.Domain + "/" + h.config.Type + "/" + h.config.Name
 	res, err := http.Post(requestURL, "application/json", bodyReader)
 	if err != nil {
 		return []record{}, err
@@ -191,8 +144,8 @@ func (h *PorkbunDNSHandler) retrieveRecords() ([]record, error) {
 
 func (h *PorkbunDNSHandler) editRecord(ip netip.Addr) error {
 	body, err := json.Marshal(editRequest{
-		APIKey:       h.apiKey,
-		SecretAPIKey: h.secretKey,
+		APIKey:       h.config.APIKey,
+		SecretAPIKey: h.config.SecretKey,
 		Content:      ip.String(),
 	})
 	if err != nil {
@@ -200,7 +153,7 @@ func (h *PorkbunDNSHandler) editRecord(ip netip.Addr) error {
 	}
 	bodyReader := bytes.NewReader(body)
 
-	requestURL := h.baseURL + editEndpoint + "/" + h.domain + "/" + h.recordType + "/" + h.recordName
+	requestURL := h.baseURL + editEndpoint + "/" + h.config.Domain + "/" + h.config.Type + "/" + h.config.Name
 	res, err := http.Post(requestURL, "application/json", bodyReader)
 	if err != nil {
 		return err
@@ -217,10 +170,10 @@ func (h *PorkbunDNSHandler) editRecord(ip netip.Addr) error {
 
 func (h *PorkbunDNSHandler) createRecord(ip netip.Addr) error {
 	body, err := json.Marshal(createRequest{
-		APIKey:       h.apiKey,
-		SecretAPIKey: h.secretKey,
-		Name:         h.recordName,
-		Type:         h.recordType,
+		APIKey:       h.config.APIKey,
+		SecretAPIKey: h.config.SecretKey,
+		Name:         h.config.Name,
+		Type:         h.config.Type,
 		Content:      ip.String(),
 	})
 	if err != nil {
@@ -228,7 +181,7 @@ func (h *PorkbunDNSHandler) createRecord(ip netip.Addr) error {
 	}
 	bodyReader := bytes.NewReader(body)
 
-	requestURL := h.baseURL + createEndpoint + "/" + h.domain
+	requestURL := h.baseURL + createEndpoint + "/" + h.config.Domain
 	res, err := http.Post(requestURL, "application/json", bodyReader)
 	if err != nil {
 		return err

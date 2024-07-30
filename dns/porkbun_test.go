@@ -2,63 +2,36 @@ package dns
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
 	"testing"
+
+	"github.com/bhorvath/ddclient/config"
 )
 
-var ip, _ = netip.ParseAddr("10.0.0.1")
-
-func TestNewPorkbunDNSHandler(t *testing.T) {
-	envSetup(t)
-
-	h, err := NewPorkbunDNSHandler("")
-	if h == nil {
-		t.Errorf("Instantiation failed; got: %v", h)
+var (
+	ip, _ = netip.ParseAddr("10.0.0.1")
+	args  = &config.Args{
+		Record: config.Record{
+			Domain: "test.com",
+			Type:   "A",
+			Name:   "subdomain",
+		},
+		Porkbun: config.Porkbun{
+			APIKey:    "pk1_xxx",
+			SecretKey: "sk1_xxx",
+		},
 	}
-	if err != nil {
-		t.Errorf("Encountered error: %v", err)
-	}
-}
-
-func TestNewPorkbunDNSHandlerMissingEnvVar(t *testing.T) {
-	tests := []struct {
-		missingEnvVar string
-	}{
-		{"DOMAIN"},
-		{"RECORD_NAME"},
-		{"RECORD_TYPE"},
-		{"PORKBUN_API_KEY"},
-		{"PORKBUN_SECRET_KEY"},
-	}
-
-	for _, tt := range tests {
-		want := errors.New("environment variable " + tt.missingEnvVar + " is missing")
-		envSetup(t)
-		t.Setenv(tt.missingEnvVar, "")
-
-		t.Run(tt.missingEnvVar, func(t *testing.T) {
-			h, err := NewPorkbunDNSHandler("")
-			if h != nil {
-				t.Errorf("Expected instantiation to fail; got: %v", h)
-			}
-			if err.Error() != want.Error() {
-				t.Errorf("Got error: %v; want: %v", err, want)
-			}
-		})
-	}
-}
+)
 
 // The handler does not support updating multiple records.
 func TestUpdateFailOnMultipleRecords(t *testing.T) {
-	envSetup(t)
 	m := NewMockPorkbunAPI()
 	m.setupRoutes()
 	defer m.svr.Close()
-	h, err := NewPorkbunDNSHandler(m.svr.URL)
+	h, err := NewPorkbunDNSHandler(m.svr.URL, args)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v ", err)
 	}
@@ -75,11 +48,10 @@ func TestUpdateFailOnMultipleRecords(t *testing.T) {
 
 // If the current IP address is the same as the DNS record then don't edit or create anything.
 func TestNoUpdateIfIPHasNotChanged(t *testing.T) {
-	envSetup(t)
 	m := NewMockPorkbunAPI()
 	m.setupRoutes()
 	defer m.svr.Close()
-	h, err := NewPorkbunDNSHandler(m.svr.URL)
+	h, err := NewPorkbunDNSHandler(m.svr.URL, args)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v ", err)
 	}
@@ -103,11 +75,10 @@ func TestNoUpdateIfIPHasNotChanged(t *testing.T) {
 
 // If the current IP address is different compared to the DNS record then update the record.
 func TestUpdateIfIPHasChanged(t *testing.T) {
-	envSetup(t)
 	m := NewMockPorkbunAPI()
 	m.setupRoutes()
 	defer m.svr.Close()
-	h, err := NewPorkbunDNSHandler(m.svr.URL)
+	h, err := NewPorkbunDNSHandler(m.svr.URL, args)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v ", err)
 	}
@@ -131,11 +102,10 @@ func TestUpdateIfIPHasChanged(t *testing.T) {
 
 // If there is no existing DNS record then create a new one.
 func TestCreateIfNoRecord(t *testing.T) {
-	envSetup(t)
 	m := NewMockPorkbunAPI()
 	m.setupRoutes()
 	defer m.svr.Close()
-	h, err := NewPorkbunDNSHandler(m.svr.URL)
+	h, err := NewPorkbunDNSHandler(m.svr.URL, args)
 	if err != nil {
 		t.Fatalf("Unexpected error: %v ", err)
 	}
@@ -148,14 +118,6 @@ func TestCreateIfNoRecord(t *testing.T) {
 	if m.createCalls != 1 {
 		t.Errorf("Got create calls: %v; want: 1", m.createCalls)
 	}
-}
-
-func envSetup(t *testing.T) {
-	t.Setenv("DOMAIN", "test.com")
-	t.Setenv("RECORD_TYPE", "A")
-	t.Setenv("RECORD_NAME", "test")
-	t.Setenv("PORKBUN_API_KEY", "pk1_xxx")
-	t.Setenv("PORKBUN_SECRET_KEY", "sk1_xxx")
 }
 
 type MockPorkbunAPI struct {

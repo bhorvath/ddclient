@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/bhorvath/ddclient/config"
 	"github.com/bhorvath/ddclient/dns"
 	"github.com/bhorvath/ddclient/ipaddress"
 )
 
 func main() {
+	a := config.ParseArgs()
 	ih := ipaddress.NewIpifyIPAddressHandler("https://api.ipify.org")
-	dh, err := dns.NewPorkbunDNSHandler("https://api.porkbun.com")
+	dh, err := dns.NewPorkbunDNSHandler("https://api.porkbun.com", a)
 	if err != nil {
 		fmt.Println("Error setting up DNS handler:", err)
 		os.Exit(1)
