@@ -6,6 +6,8 @@ import "github.com/alexflint/go-arg"
 type Args struct {
 	Record
 	Porkbun
+	ConfigFilePath string `arg:"--config" help:"config file to use"`
+	Save           bool   `help:"save configs to file (no other action is taken)"`
 }
 
 // ParseArgs parses and returns command line args.

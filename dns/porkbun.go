@@ -20,7 +20,7 @@ const (
 
 type PorkbunDNSHandler struct {
 	baseURL string
-	config  *config.Args
+	config  *config.App
 }
 
 type retrieveRequest struct {
@@ -59,7 +59,7 @@ type createRequest struct {
 }
 
 // NewPorkbunDNSHandler allows a DNS record in Porkbun to be read, updated or created.
-func NewPorkbunDNSHandler(baseURL string, config *config.Args) (*PorkbunDNSHandler, error) {
+func NewPorkbunDNSHandler(baseURL string, config *config.App) (*PorkbunDNSHandler, error) {
 	return &PorkbunDNSHandler{
 		baseURL: baseURL,
 		config:  config,
