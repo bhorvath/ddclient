@@ -69,7 +69,7 @@ func (s *service) validateConfig(cfg *App) error {
 		e = append(e, "type not set")
 	}
 	if cfg.Name == "" {
-		e = append(e, "name not set")
+		fmt.Println("Name not set - modifying root domain record")
 	}
 	if cfg.APIKey == "" {
 		e = append(e, "apikey not set")
