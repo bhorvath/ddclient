@@ -41,7 +41,7 @@ func checkSave(args *config.Args, cfgS config.Service) {
 	if args.Save {
 		fmt.Println("Saving configuration to file")
 		if err := cfgS.SaveConfig(); err != nil {
-			fmt.Println("Error encountered while saving configuration: %v",
+			fmt.Println("Error encountered while saving configuration:",
 				err.Error())
 			os.Exit(1)
 		}
@@ -52,7 +52,7 @@ func checkSave(args *config.Args, cfgS config.Service) {
 func prepareConfigs(cfgS config.Service) *config.App {
 	cfg, err := cfgS.BuildConfig()
 	if err != nil {
-		fmt.Println("Error encountered while configuring application: %v",
+		fmt.Println("Error encountered while configuring application:",
 			err.Error())
 		os.Exit(1)
 	}
